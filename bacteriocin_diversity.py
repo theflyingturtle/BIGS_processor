@@ -15,6 +15,10 @@ import xlrd
 import click
 import collections
 import logging
+import os
+import shutil
+import pathlib
+import sys
 
 def clusters(df):
 	clusters = collections.defaultdict(list)
@@ -35,12 +39,29 @@ def read_export(allele_export):
 	return df
 
 
+def prepare_outdir(output_directory, overwrite=False):
+	output_directory = pathlib.Path(output_directory)
+	if output_directory.exists():
+		if overwrite:
+			shutil.rmtree(output_directory)
+		else:
+			logging.fatal("%s already exists but you didn't pass --overwrite", output_directory)
+			assert False, "Cannot create output directory"
+	os.mkdir(output_directory)
+
+
 @click.command()
 @click.argument("allele_export", type=click.File("rb"))
-def main(allele_export):
+@click.option("--output_directory", 
+	default="outdir",
+	prompt=True,
+	type=click.Path(file_okay=False, dir_okay=True, readable=True, writable=True, resolve_path=True))
+@click.option('--overwrite', is_flag=True)
+def main(allele_export, output_directory, overwrite):
 	"""Short description of what the script does
 
 	Long description of what the script does"""
+	prepare_outdir(output_directory, overwrite)
 
 	df = read_export(allele_export)
 
@@ -48,11 +69,14 @@ def main(allele_export):
 	logging.debug("Clusters: %s", c)
 
 	summary = pd.DataFrame(index=df.index)
-	for cluster, loci in clusters(df).items():
-		summary[cluster] = (df[loci] != 0).sum(axis="columns")
+	for cluster, loci in c.items():
+		summary[cluster] = (df[loci] != 0).sum(axis="columns") / len(loci)
 
-	import ipdb; ipdb.set_trace()
-		
+
+
+
+	
+	import ipdb; ipdb.set_trace()	
 
 
 if __name__ == '__main__':
