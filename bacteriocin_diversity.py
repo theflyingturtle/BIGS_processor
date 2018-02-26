@@ -19,6 +19,8 @@ import os
 import shutil
 import pathlib
 import sys
+import seaborn as sns
+from matplotlib import pyplot as plt
 
 def clusters(df):
 	clusters = collections.defaultdict(list)
@@ -47,7 +49,9 @@ def prepare_outdir(output_directory, overwrite=False):
 		else:
 			logging.fatal("%s already exists but you didn't pass --overwrite", output_directory)
 			assert False, "Cannot create output directory"
-	os.mkdir(output_directory)
+
+	output_directory.mkdir()
+	return output_directory
 
 
 @click.command()
@@ -61,19 +65,23 @@ def main(allele_export, output_directory, overwrite):
 	"""Short description of what the script does
 
 	Long description of what the script does"""
-	prepare_outdir(output_directory, overwrite)
+	outdir = prepare_outdir(output_directory, overwrite)
 
 	df = read_export(allele_export)
 
 	c = clusters(df)
 	logging.debug("Clusters: %s", c)
 
+	# Summary allele presence across clusters
 	summary = pd.DataFrame(index=df.index)
 	for cluster, loci in c.items():
 		summary[cluster] = (df[loci] != 0).sum(axis="columns") / len(loci)
+	summary.to_csv(outdir / "presence_absence_summary.csv")
 
-
-
+	# Plot average presence of loci in each cluster
+	plt.gcf().set_size_inches(18.5, 10.5)
+	sns.heatmap(summary[summary.mean().sort_values().index], yticklabels=False, cmap='YlGnBu')
+	plt.savefig(str(outdir / 'presence_absence_heatmap.png'), bbox_inches='tight')
 
 	
 	import ipdb; ipdb.set_trace()	
