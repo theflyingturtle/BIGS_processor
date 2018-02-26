@@ -1,15 +1,5 @@
 #!/usr/bin/env python3
 
-# 			i) allele export (select [s][i])
-# 				Counts
-# 					Complete - rows where all cells in [loci] =! 0
-# 					Partial - rows where >1 cells in [loci] == 0, but not all
-# 					Not detected - rows where all cells in [loci] == 0
-# 				Presentation
-# 					CSV ready for prettifying/R
-# 				Final check
-# 					Total = 100%
-
 import pandas as pd
 import xlrd
 import click
@@ -82,9 +72,14 @@ def main(allele_export, output_directory, overwrite):
 	plt.gcf().set_size_inches(18.5, 10.5)
 	sns.heatmap(summary[summary.mean().sort_values().index], yticklabels=False, cmap='YlGnBu')
 	plt.savefig(str(outdir / 'presence_absence_heatmap.png'), bbox_inches='tight')
-
 	
-	import ipdb; ipdb.set_trace()	
+	# Replace [s][i] and [s] with EOC and I, respectively
+	loci = [locus for loci in c.values() for locus in loci]
+	df.loc[:, loci] = df.loc[:, loci].replace(["[S][I]", "[S]"], ["EOC", "I"])
+	profiles = df.set_index("id").loc[:, loci].astype(str).apply("-".join, axis=1)
+	profiles.value_counts().to_csv(outdir / "profile_counts.csv")
+
+	import ipdb; ipdb.set_trace()
 
 
 if __name__ == '__main__':
