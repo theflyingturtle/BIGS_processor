@@ -37,7 +37,13 @@ def read_export(allele_export):
 
     return df
 
-#def read_toxin_seqs(toxin_seqs):
+
+def read_ref_seqs(ref_seqs):
+    for record in SeqIO.parse(ref_seqs, "fasta"):
+        ref_lens[record.name] = len(record.seq)
+
+    return ref_lens
+
 
 def prepare_outdir(output_directory, overwrite=False):
     output_directory = pathlib.Path(output_directory)
@@ -53,13 +59,14 @@ def prepare_outdir(output_directory, overwrite=False):
 
 @click.command()
 @click.argument("allele_export", type=click.File("rb"))
-@click.argument("toxin_seqs", type=click.Path())
+@click.argument("ref_seqs", type=click.Path())
+@click.argument("allele_seqs", type=click.Path())
 @click.option("--output_directory", 
     default="outdir",
     prompt=True,
     type=click.Path(file_okay=False, dir_okay=True, readable=True, writable=True, resolve_path=True))
 @click.option('--overwrite', is_flag=True)
-def main(allele_export, toxin_seqs, output_directory, overwrite):
+def main(allele_export, allele_seqs,ref_seqs, output_directory, overwrite):
     """TO DO... Short description of what the script does
 
     Long description of what the script does"""
@@ -89,7 +96,7 @@ def main(allele_export, toxin_seqs, output_directory, overwrite):
     import ipdb; ipdb.set_trace()
 
     # To process one file
-    for record in SeqIO.parse(toxin_seqs, "fasta"):
+    for record in SeqIO.parse(allele_seqs, "fasta"):
         # Absent == sequence starts with a gap (-)
         if record.seq.startswith("-"):
             status[record.name] = "absent"
