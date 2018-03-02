@@ -9,7 +9,10 @@ import os
 import shutil
 import pathlib
 import sys
+
 from Bio import SeqIO
+from Bio.Data.CodonTable import TranslationError
+
 
 def clusters(df):
     clusters = collections.defaultdict(list)
@@ -18,6 +21,7 @@ def clusters(df):
             clusters[column.replace("mj_", "")[:3]].append(column)
 
     return clusters
+
 
 def read_export(allele_export):
     df = pd.read_excel(allele_export)
@@ -49,13 +53,13 @@ def prepare_outdir(output_directory, overwrite=False):
 
 @click.command()
 @click.argument("allele_export", type=click.File("rb"))
-#@click.argument("toxin_seqs", type=click.File("rb"))
+@click.argument("toxin_seqs", type=click.Path())
 @click.option("--output_directory", 
     default="outdir",
     prompt=True,
     type=click.Path(file_okay=False, dir_okay=True, readable=True, writable=True, resolve_path=True))
 @click.option('--overwrite', is_flag=True)
-def main(allele_export, output_directory, overwrite):
+def main(allele_export, toxin_seqs, output_directory, overwrite):
     """TO DO... Short description of what the script does
 
     Long description of what the script does"""
@@ -85,15 +89,22 @@ def main(allele_export, output_directory, overwrite):
     import ipdb; ipdb.set_trace()
 
     # To process one file
-    for record in SeqIO.parse("cibscdtestfiles/cibAAll.fas", "fasta"):
+    for record in SeqIO.parse(toxin_seqs, "fasta"):
+        # Absent == sequence starts with a gap (-)
         if record.seq.startswith("-"):
             status[record.name] = "absent"
             continue
+
+        # Incomplete == sequence does not translate
         try:
             record.seq.translate(cds=True)
-        except:
+        except TranslationError:
             status[record.name] = "incomplete"
             continue
+
+        
+
+        # Otherwise, unassigned
         status[record.name] = "unassigned"
 
 # Toxin gene processing
@@ -108,13 +119,3 @@ def main(allele_export, output_directory, overwrite):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     main()
-
-
-
-
-
-
-
-
-
-
