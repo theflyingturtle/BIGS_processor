@@ -11,6 +11,7 @@ import pathlib
 import sys
 import seaborn as sns
 from matplotlib import pyplot as plt
+import bidict
 
 def clusters(df):
 	clusters = collections.defaultdict(list)
@@ -76,9 +77,22 @@ def main(allele_export, output_directory, overwrite):
 	# Replace [s][i] and [s] with EOC and I, respectively
 	loci = [locus for loci in c.values() for locus in loci]
 	df.loc[:, loci] = df.loc[:, loci].replace(["[S][I]", "[S]"], ["EOC", "I"])
-	profiles = df.set_index("id").loc[:, loci].astype(str).apply("-".join, axis=1)
-	profiles.value_counts().to_csv(outdir / "profile_counts.csv")
+	bact_STs = {}
+	isolate_STs = {}
+	for cluster, loci in c.items():
+		# This whole hacky section is because we need to assign the profile '0-0-...-0' the key -9
+		profiles = df.set_index("id").loc[:, loci].astype(str).apply("-".join, axis=1)
+		is_zero = lambda profile: all(allele == '0' for allele in profile.split("-"))
+		has_an_all_zero_profile = any(is_zero(profile) for profile in profiles.unique())
+		nonzero_profiles = (profile for profile in profiles.unique() if not is_zero(profile))
 
+		bact_STs[cluster] = bidict.bidict(enumerate(nonzero_profiles, 1))
+		if has_an_all_zero_profile:
+			bact_STs[cluster][-9] = next(profile for profile in profiles.unique() if is_zero(profile))
+		isolate_STs[cluster] = profiles.map(bact_STs[cluster].inv.get).astype(int)
+
+	pd.DataFrame(isolate_STs).to_csv(outdir / "isolate_STs.csv")
+	pd.DataFrame.from_dict(bact_STs, orient='index').to_csv(outdir / "bact_STs.csv")
 	import ipdb; ipdb.set_trace()
 
 
