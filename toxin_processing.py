@@ -31,7 +31,8 @@ def read_export(allele_export):
     df.loc[:, loci] = df.loc[:, loci].replace(["[S][I]", "[S]"], ["EOC", "Q"])
 
     # Drop rows where loci appear to be uncurated
-    missing_data = df[df[loci].isnull().any(axis="columns")]["id"]
+    # Must check =="nan" since we read everything as strings, which we did for the string replacement above
+    missing_data = df[(df[loci] == "nan").any(axis="columns")]["id"]
     if not missing_data.empty:
         logging.warn("Dropped uncurated isolate(s) with id(s): %s", ", ".join(missing_data.astype(str)))
         df.drop(missing_data.index, inplace=True)
@@ -114,18 +115,20 @@ def main(allele_export, ref_seqs, allele_seqdir, output_directory, overwrite):
     statuses = {}
     for locus, alleles in read_isolate_alleles(allele_seqdir).items():
         status = {}
+        allele_ids = df.set_index("id")[locus].to_dict()
         for isolate_id, seq in alleles.items():
             # Absent == sequence starts with a gap (-)
             if seq.startswith("-"):
                 status[isolate_id] = "absent"
                 continue
 
-            # Incomplete == sequence does not translate
+            # EOC == sequence 
             try:
-                seq.translate(cds=True)
-            except TranslationError:
-                status[isolate_id] = "incomplete"
-                continue
+                if allele_ids[str(isolate_id)] == "EOC":
+                    status[isolate_id] = "eoc"
+                    continue
+            except KeyError:
+                logging.warn("Failed to look up isolate %s in allele export", isolate_id)
 
             # Fragment == sequence < 90% of reference allele length
             if len(seq) / ref_lens[locus] < 0.9:
@@ -137,11 +140,20 @@ def main(allele_export, ref_seqs, allele_seqdir, output_directory, overwrite):
                 status[isolate_id] = "overweight"
                 continue
 
+            # Incomplete == sequence does not translate
+            # This deliberately comes after fragment and overweight
+            try:
+                seq.translate(cds=True)
+            except TranslationError:
+                status[isolate_id] = "incomplete"
+                continue
+
             # Otherwise, it is a complete sequence
             status[isolate_id] = "complete"
         statuses[locus] = pd.Series(status, dtype="category")
     statuses = pd.DataFrame(statuses, dtype="category").sort_index()
 
+    summary = statuses.apply(pd.Series.value_counts).fillna(0).astype(int)
     import ipdb; ipdb.set_trace()
     pass
 
