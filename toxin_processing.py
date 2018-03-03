@@ -24,11 +24,12 @@ def clusters(df):
 
 
 def read_export(allele_export):
-    df = pd.read_excel(allele_export)
+    df = pd.read_excel(allele_export, dtype=str)
     loci = [locus for loci in clusters(df).values() for locus in loci]
-    # TO DO: script failed when I used a dataset that had no [S][I] or [S] to replace??
+
     # Replace "[S][I]" and "[S]" with "EOC" (end of contig) and "Q" (questionable), respectively
     df.loc[:, loci] = df.loc[:, loci].replace(["[S][I]", "[S]"], ["EOC", "Q"])
+
     # Drop rows where loci appear to be uncurated
     missing_data = df[df[loci].isnull().any(axis="columns")]["id"]
     if not missing_data.empty:
