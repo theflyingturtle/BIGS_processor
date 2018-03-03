@@ -41,9 +41,21 @@ def read_export(allele_export):
 def read_ref_seqs(ref_seqs):
     ref_lens = {}
     for record in SeqIO.parse(ref_seqs, "fasta"):
-        ref_lens[record.name] = len(record.seq)
+        # reference exports have _1 in their names but we just want the locus
+        ref_lens[record.name.replace("_1", "")] = len(record.seq)
     
     return ref_lens
+
+
+def read_isolate_alleles(allele_seqs):
+    loci = {}
+    for f in pathlib.Path(allele_seqs).glob("*.fas"):
+        alleles = {}
+        for record in SeqIO.parse(str(f), "fasta"):  # BioPython poops because it checks for type str
+            alleles[int(record.name)] = record.seq
+        loci[f.stem] = alleles
+
+    return loci
 
 
 def prepare_outdir(output_directory, overwrite=False):
@@ -58,16 +70,17 @@ def prepare_outdir(output_directory, overwrite=False):
     output_directory.mkdir()
     return output_directory
 
+
 @click.command()
 @click.argument("allele_export", type=click.File("rb"))
-@click.argument("ref_seqs", type=click.Path())
-@click.argument("allele_seqs", type=click.Path())
+@click.argument("ref_seqs", type=click.Path(exists=True, dir_okay=False))
+@click.argument("allele_seqdir", type=click.Path(exists=True, file_okay=False))
 @click.option("--output_directory", 
     default="outdir",
     prompt=True,
     type=click.Path(file_okay=False, dir_okay=True, readable=True, writable=True, resolve_path=True))
 @click.option('--overwrite', is_flag=True)
-def main(allele_export, ref_seqs, allele_seqs, output_directory, overwrite):
+def main(allele_export, ref_seqs, allele_seqdir, output_directory, overwrite):
     """TO DO... Short description of what the script does
 
     Long description of what the script does"""
@@ -94,26 +107,42 @@ def main(allele_export, ref_seqs, allele_seqs, output_directory, overwrite):
     gene_prev['cluster'] = gene_prev['locus'].replace('mj_', '', regex=True).str[:3]
     gene_prev = gene_prev.reindex(sorted(gene_prev.columns), axis=1)
     gene_prev.to_csv(outdir / "gene_prevalence_summary.csv")
-    import ipdb; ipdb.set_trace()
 
     # To process one file
-    for record in SeqIO.parse(allele_seqs, "fasta"):
-        # Absent == sequence starts with a gap (-)
-        if record.seq.startswith("-"):
-            status[record.name] = "absent"
-            continue
+    ref_lens = read_ref_seqs(ref_seqs)
+    statuses = {}
+    for locus, alleles in read_isolate_alleles(allele_seqdir).items():
+        status = {}
+        for isolate_id, seq in alleles.items():
+            # Absent == sequence starts with a gap (-)
+            if seq.startswith("-"):
+                status[isolate_id] = "absent"
+                continue
 
-        # Incomplete == sequence does not translate
-        try:
-            record.seq.translate(cds=True)
-        except TranslationError:
-            status[record.name] = "incomplete"
-            continue
+            # Incomplete == sequence does not translate
+            try:
+                seq.translate(cds=True)
+            except TranslationError:
+                status[isolate_id] = "incomplete"
+                continue
 
-        
+            # Fragment == sequence < 90% of reference allele length
+            if len(seq) / ref_lens[locus] < 0.9:
+                status[isolate_id] = "fragment"
+                continue
 
-        # Otherwise, unassigned
-        status[record.name] = "unassigned"
+            # Overweight == sequence > 110% of reference allele length
+            if len(seq) / ref_lens[locus] > 1.1:
+                status[isolate_id] = "overweight"
+                continue
+
+            # Otherwise, it is a complete sequence
+            status[isolate_id] = "complete"
+        statuses[locus] = pd.Series(status, dtype="category")
+    statuses = pd.DataFrame(statuses, dtype="category").sort_index()
+
+    import ipdb; ipdb.set_trace()
+    pass
 
 # Toxin gene processing
 # Create status df
