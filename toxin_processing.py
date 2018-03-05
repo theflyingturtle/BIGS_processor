@@ -94,22 +94,22 @@ def main(allele_export, ref_seqs, allele_seqdir, output_directory, overwrite):
     logging.debug("Clusters: %s", c)
 
     # Summary allele presence across clusters
-    cluster_summary = pd.DataFrame(index=df.index)
+    cluster_summary = pd.DataFrame(index=df.index)    
     for cluster, loci in c.items():
-        cluster_summary[cluster] = (df[loci] != 0).sum(axis="columns") / len(loci)
+        cluster_summary[cluster] = (df[loci] != "0").sum(axis="columns") / len(loci)
     cluster_summary.to_csv(outdir / "cluster_presence_absence_summary.csv")
 
     # Summary allele presence within clusters
     gene_list = []
     for cluster, loci in c.items():
-          gene = (df[loci] != 0).sum(axis="rows") / len(df.index)
+          gene = (df[loci] != "0").sum(axis="rows") / len(df.index)
           gene_list.append(gene)
     gene_list = pd.concat(gene_list)
     gene_prev = pd.DataFrame({'locus':gene_list.index, 'proportion_present':gene_list.values})
     gene_prev['cluster'] = gene_prev['locus'].replace('mj_', '', regex=True).str[:3]
     gene_prev = gene_prev.reindex(sorted(gene_prev.columns), axis=1)
     gene_prev.to_csv(outdir / "gene_prevalence_summary.csv")
-
+    
     # To process one file
     ref_lens = read_ref_seqs(ref_seqs)
     statuses = {}
@@ -137,7 +137,7 @@ def main(allele_export, ref_seqs, allele_seqdir, output_directory, overwrite):
 
             # Overweight == sequence > 110% of reference allele length
             if len(seq) / ref_lens[locus] > 1.1:
-                status[isolate_id] = "overweight"
+                status[isolate_id] = "atypical_length"
                 continue
 
             # Incomplete == sequence does not translate
