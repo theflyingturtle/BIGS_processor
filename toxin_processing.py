@@ -109,8 +109,8 @@ def main(allele_export, ref_seqs, allele_seqdir, output_directory, overwrite):
     gene_prev['cluster'] = gene_prev['locus'].replace('mj_', '', regex=True).str[:3]
     gene_prev = gene_prev.reindex(sorted(gene_prev.columns), axis=1)
     gene_prev.to_csv(outdir / "gene_prevalence_summary.csv")
-    
-    # To process one file
+
+    # Process nucleotide sequences
     ref_lens = read_ref_seqs(ref_seqs)
     statuses = {}
     for locus, alleles in read_isolate_alleles(allele_seqdir).items():
@@ -154,6 +154,7 @@ def main(allele_export, ref_seqs, allele_seqdir, output_directory, overwrite):
     statuses = pd.DataFrame(statuses, dtype="category").sort_index()
 
     summary = statuses.apply(pd.Series.value_counts).fillna(0).astype(int)
+    summary.to_csv(outdir / "locus_status_summary.csv")
     import ipdb; ipdb.set_trace()
     pass
 
