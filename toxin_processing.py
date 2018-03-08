@@ -132,7 +132,7 @@ def main(allele_export, ref_seqs, allele_seqdir, toxin_seqdir, output_directory,
     gene_prev['cluster'] = gene_prev['locus'].replace('mj_', '', regex=True).str[:3]
     gene_prev = gene_prev.reindex(sorted(gene_prev.columns), axis=1)
     gene_prev.to_csv(outdir / "gene_prevalence_summary.csv")
-    
+
     # Summary of bacteriocin profiles (as for MLST)
     bact_STs = {}
     isolate_STs = {}
@@ -202,16 +202,16 @@ def main(allele_export, ref_seqs, allele_seqdir, toxin_seqdir, output_directory,
 
     # Toxin gene processing
     for toxin, alleles in read_toxins(toxin_seqdir).items():
-    #     nuc_counts = {}
-    #     for seq, ids in dedup_records.items():
-    #         tmp_count = len(ids)
-    #         nuc_counts[seq] = tmp_count
+        nuc_counts = {}
+        for seq, ids in dedup_nucs.items():
+            tmp_count = len(ids)
+            nuc_counts[seq] = tmp_count
 
-    #     unique_nucs = {
-    #         seq: f"{v[0]}_{nuc_counts[seq]}"
-    #         for seq, v
-    #         in dedup_nucs.items()
-    #     }
+        unique_nucs = {
+            seq: f"{v[0]}_{nuc_counts[seq]}"
+            for seq, v
+            in dedup_nucs.items()
+        }
 
     #     nucs_out = (SeqRecord(Seq(k, IUPAC.IUPACAmbiguousDNA), id=v, description="") for k, v in unique_nucs.items())
     #     SeqIO.write(nucs_out, "nucs.fas", "fasta")
