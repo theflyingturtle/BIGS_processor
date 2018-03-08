@@ -237,12 +237,22 @@ def main(allele_export, ref_seqs, allele_seqdir, toxin_seqdir, output_directory,
         SeqIO.write(nucs_out, str(nuc_dir / f"{locus}_unique_nucs.fas"), "fasta")
 
     # Amino acids
-    import ipdb; ipdb.set_trace()
+    unique_toxin_aminos = {}
     for f in pathlib.Path(nuc_dir).glob("*.fas"):
-        dedup_aminos = defaultdict(list)
+        unique_aminos = defaultdict(list)
         for record in SeqIO.parse(str(f), "fasta"):
             record.seq = record.seq.translate()
-            dedup_aminos[str(record.seq)].append(record.id)    
+            unique_aminos[str(record.seq)].append(record.id)
+        unique_toxin_aminos[locus] = unique_aminos
+
+    amino_dir = outdir / "unique_toxin_aminos"
+    amino_dir.mkdir()
+    for locus, unique_aminos in unique_toxin_aminos.items():
+        aminos_out = (SeqRecord(Seq(k, IUPAC.ExtendedIUPACProtein), id="|".join(v), description='') for k, v in unique_aminos.items())
+        SeqIO.write(aminos_out, str(amino_dir / f"{locus}_unique_aminos.fas"), "fasta")
+
+    import ipdb; ipdb.set_trace()
+        
     #     dedup_aminos = defaultdict(list)
     #     for record in SeqIO.parse("nucs.fas", "fasta"):
     #         record.seq = record.seq.translate()
