@@ -250,20 +250,7 @@ def main(allele_export, ref_seqs, allele_seqdir, toxin_seqdir, output_directory,
 
     #     aminos_out = (SeqRecord(Seq(k, IUPAC.ExtendedIUPACProtein), id="|".join(v), description='') for k, v in dedup_aminos.items())
     #     SeqIO.write(aminos_out, "aminos.fas", "fasta")
-    
-
-    def read_toxins(toxin_seqs):
-    toxins = {}
-    for f in pathlib.Path(toxin_seqs).glob("*.fas"):
-        dedup_nucs = defaultdict(list)
-        for record in SeqIO.parse(str(f), "fasta"):
-            dedup_nucs[str(record.seq)].append(record.id)
-        toxins[f.stem] = dedup_nucs
-
-    return toxins
-
-
-
+ 
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
