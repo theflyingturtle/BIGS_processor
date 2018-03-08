@@ -243,7 +243,7 @@ def main(allele_export, ref_seqs, allele_seqdir, toxin_seqdir, output_directory,
         for record in SeqIO.parse(str(f), "fasta"):
             record.seq = record.seq.translate()
             unique_aminos[str(record.seq)].append(record.id)
-        unique_toxin_aminos[locus] = unique_aminos
+        unique_toxin_aminos[f.stem] = unique_aminos
 
     amino_dir = outdir / "unique_toxin_aminos"
     amino_dir.mkdir()
