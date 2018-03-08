@@ -69,20 +69,11 @@ def read_toxins(toxin_seqs):
     toxins = {}
     for f in pathlib.Path(toxin_seqs).glob("*.fas"):
         dedup_nucs = defaultdict(list)
-        for record in SeqIO.parse("mj_cibA.fas", "fasta"):
+        for record in SeqIO.parse(str(f), "fasta"):
             dedup_nucs[str(record.seq)].append(record.id)
         toxins[f.stem] = dedup_nucs
 
-
-
-    # toxins = {}
-    # for f in pathlib.Path(toxin_seqs).glob("*.fas"):
-    #     alleles = {}
-    #     for record in SeqIO.parse(str(f), "fasta"):  
-    #         alleles[int(record.name)] = record.seq
-    #     toxins[f.stem] = alleles
-
-    # return toxins
+    return toxins
 
 
 def prepare_outdir(output_directory, overwrite=False):
