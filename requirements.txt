@@ -1,5 +1,7 @@
+Biopython
+bidict
 click
-biopython
 ipdb
 pandas
+seaborn
 xlrd
