@@ -197,21 +197,25 @@ def main(allele_export, ref_seqs, allele_seqdir, toxin_seqdir, output_directory,
 
     summary = statuses.apply(pd.Series.value_counts).fillna(0).astype(int)
     summary.to_csv(outdir / "locus_status_summary.csv")
-    import ipdb; ipdb.set_trace()
+
     pass
 
     # Toxin gene processing
+    tot_nuc_counts = {}
     for toxin, alleles in read_toxins(toxin_seqdir).items():
-        nuc_counts = {}
-        for seq, ids in dedup_nucs.items():
+        ind_nuc_counts = {}
+        for seq, ids in alleles.items():
             tmp_count = len(ids)
-            nuc_counts[seq] = tmp_count
+            ind_nuc_counts[seq] = tmp_count
+        tot_nuc_counts[toxin] = ind_nuc_counts
+    import ipdb; ipdb.set_trace()
 
-        unique_nucs = {
-            seq: f"{v[0]}_{nuc_counts[seq]}"
-            for seq, v
-            in dedup_nucs.items()
-        }
+    unique_toxin_nucs = {}
+    unique_nucs = {
+        seq: f"{v[0]}_{ind_nuc_counts[seq]}"
+        for seq, v
+        in alleles.items()
+    }
 
     #     nucs_out = (SeqRecord(Seq(k, IUPAC.IUPACAmbiguousDNA), id=v, description="") for k, v in unique_nucs.items())
     #     SeqIO.write(nucs_out, "nucs.fas", "fasta")
