@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import matplotlib
-matplotlib.use("Agg")
+#matplotlib.use("Agg")
 
 import pandas as pd
 import xlrd
@@ -252,15 +252,6 @@ def main(allele_export, ref_seqs, allele_seqdir, toxin_seqdir, output_directory,
         SeqIO.write(aminos_out, str(amino_dir / f"{locus}_unique_aminos.fas"), "fasta")
 
     import ipdb; ipdb.set_trace()
-        
-    #     dedup_aminos = defaultdict(list)
-    #     for record in SeqIO.parse("nucs.fas", "fasta"):
-    #         record.seq = record.seq.translate()
-    #         dedup_aminos[str(record.seq)].append(record.id)
-
-    #     aminos_out = (SeqRecord(Seq(k, IUPAC.ExtendedIUPACProtein), id="|".join(v), description='') for k, v in dedup_aminos.items())
-    #     SeqIO.write(aminos_out, "aminos.fas", "fasta")
- 
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
