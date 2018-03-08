@@ -9,6 +9,11 @@ import os
 import shutil
 import pathlib
 import sys
+import bidict
+import seaborn as sns
+
+from collections import defaultdict
+from matplotlib import pyplot as plt
 
 from Bio import SeqIO
 from Bio.Data.CodonTable import TranslationError
@@ -60,6 +65,26 @@ def read_isolate_alleles(allele_seqs):
     return loci
 
 
+def read_toxins(toxin_seqs):
+    toxins = {}
+    for f in pathlib.Path(toxin_seqs).glob("*.fas"):
+        dedup_nucs = defaultdict(list)
+        for record in SeqIO.parse("mj_cibA.fas", "fasta"):
+            dedup_nucs[str(record.seq)].append(record.id)
+        toxins[f.stem] = dedup_nucs
+
+
+
+    # toxins = {}
+    # for f in pathlib.Path(toxin_seqs).glob("*.fas"):
+    #     alleles = {}
+    #     for record in SeqIO.parse(str(f), "fasta"):  
+    #         alleles[int(record.name)] = record.seq
+    #     toxins[f.stem] = alleles
+
+    # return toxins
+
+
 def prepare_outdir(output_directory, overwrite=False):
     output_directory = pathlib.Path(output_directory)
     if output_directory.exists():
@@ -77,12 +102,14 @@ def prepare_outdir(output_directory, overwrite=False):
 @click.argument("allele_export", type=click.File("rb"))
 @click.argument("ref_seqs", type=click.Path(exists=True, dir_okay=False))
 @click.argument("allele_seqdir", type=click.Path(exists=True, file_okay=False))
+# TODO: don't import toxins again, instead identify them in allele_seqdir
+@click.argument("toxin_seqdir", type=click.Path(exists=True, file_okay=False))
 @click.option("--output_directory", 
     default="outdir",
     prompt=True,
     type=click.Path(file_okay=False, dir_okay=True, readable=True, writable=True, resolve_path=True))
 @click.option('--overwrite', is_flag=True)
-def main(allele_export, ref_seqs, allele_seqdir, output_directory, overwrite):
+def main(allele_export, ref_seqs, allele_seqdir, toxin_seqdir, output_directory, overwrite):
     """TO DO... Short description of what the script does
 
     Long description of what the script does"""
@@ -99,6 +126,11 @@ def main(allele_export, ref_seqs, allele_seqdir, output_directory, overwrite):
         cluster_summary[cluster] = (df[loci] != "0").sum(axis="columns") / len(loci)
     cluster_summary.to_csv(outdir / "cluster_presence_absence_summary.csv")
 
+    # Plot average presence of loci in each cluster
+    plt.gcf().set_size_inches(18.5, 10.5)
+    sns.heatmap(cluster_summary[cluster_summary.mean().sort_values().index], yticklabels=False, cmap='YlGnBu')
+    plt.savefig(str(outdir / 'presence_absence_heatmap.png'), bbox_inches='tight')
+
     # Summary allele presence within clusters
     gene_list = []
     for cluster, loci in c.items():
@@ -109,6 +141,25 @@ def main(allele_export, ref_seqs, allele_seqdir, output_directory, overwrite):
     gene_prev['cluster'] = gene_prev['locus'].replace('mj_', '', regex=True).str[:3]
     gene_prev = gene_prev.reindex(sorted(gene_prev.columns), axis=1)
     gene_prev.to_csv(outdir / "gene_prevalence_summary.csv")
+    import ipdb; ipdb.set_trace()
+    # Summary of bacteriocin profiles (as for MLST)
+    bact_STs = {}
+    isolate_STs = {}
+    for cluster, loci in c.items():
+        # This whole hacky section is because we need to assign the profile '0-0-...-0' the key -9
+        profiles = df.set_index("id").loc[:, loci].astype(str).apply("-".join, axis=1)
+        is_zero = lambda profile: all(allele == '0' for allele in profile.split("-"))
+        has_an_all_zero_profile = any(is_zero(profile) for profile in profiles.unique())
+        nonzero_profiles = (profile for profile in profiles.unique() if not is_zero(profile))
+
+        bact_STs[cluster] = bidict.bidict(enumerate(nonzero_profiles, 1))
+        if has_an_all_zero_profile:
+            bact_STs[cluster][-9] = next(profile for profile in profiles.unique() if is_zero(profile))
+        isolate_STs[cluster] = profiles.map(bact_STs[cluster].inv.get).astype(int)
+
+    pd.DataFrame(isolate_STs).to_csv(outdir / "isolate_STs.csv")
+    pd.DataFrame.from_dict(bact_STs, orient='index').to_csv(outdir / "bact_STs.csv")
+
 
     # Process nucleotide sequences
     ref_lens = read_ref_seqs(ref_seqs)
@@ -158,15 +209,34 @@ def main(allele_export, ref_seqs, allele_seqdir, output_directory, overwrite):
     import ipdb; ipdb.set_trace()
     pass
 
-# Toxin gene processing
-# Create status df
-# Need look-up of all toxin reference alleles
-# For each toxin gene file (xxxAxxx.fas - check reference allele is available)
-# Open file,
-# if no sequence, nd
-# if sequence < 80% or > 120% len(allele1), len diff
-# if no start codon, or stop codon, or internal stop codons, incomplete CDS
-    
+    # # Toxin gene processing
+    # for toxin, alleles in read_toxins(toxin_seqdir).items():
+    #     dedup_nucs = defaultdict(list)
+    #     for record in SeqIO.parse("mj_cibA.fas", "fasta"):
+    #         dedup_nucs[str(record.seq)].append(record.id)
+
+    #     nuc_counts = {}
+    #     for seq, ids in dedup_records.items():
+    #         tmp_count = len(ids)
+    #         nuc_counts[seq] = tmp_count
+
+    #     unique_nucs = {
+    #         seq: f"{v[0]}_{nuc_counts[seq]}"
+    #         for seq, v
+    #         in dedup_nucs.items()
+    #     }
+
+    #     nucs_out = (SeqRecord(Seq(k, IUPAC.IUPACAmbiguousDNA), id=v, description="") for k, v in unique_nucs.items())
+    #     SeqIO.write(nucs_out, "nucs.fas", "fasta")
+
+    #     dedup_aminos = defaultdict(list)
+    #     for record in SeqIO.parse("nucs.fas", "fasta"):
+    #         record.seq = record.seq.translate()
+    #         dedup_aminos[str(record.seq)].append(record.id)
+
+    #     aminos_out = (SeqRecord(Seq(k, IUPAC.ExtendedIUPACProtein), id="|".join(v), description='') for k, v in dedup_aminos.items())
+    #     SeqIO.write(aminos_out, "aminos.fas", "fasta")
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     main()
