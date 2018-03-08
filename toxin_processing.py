@@ -19,6 +19,9 @@ from collections import defaultdict
 from matplotlib import pyplot as plt
 
 from Bio import SeqIO
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
+from Bio.Alphabet import IUPAC
 from Bio.Data.CodonTable import TranslationError
 
 
@@ -205,6 +208,7 @@ def main(allele_export, ref_seqs, allele_seqdir, toxin_seqdir, output_directory,
     pass
 
     # Toxin gene processing
+    # Nucleotides
     toxins = read_toxins(toxin_seqdir)
     
     tot_nuc_counts = {}
@@ -224,11 +228,21 @@ def main(allele_export, ref_seqs, allele_seqdir, toxin_seqdir, output_directory,
             unique_nucs[seq] = f"{representative_id}_{count}"
         unique_toxin_nucs[locus] = unique_nucs
         
+    # Save unique nucleotide sequences
+    # FASTA headers follow format of ["representative id"_"number of isolates with this allele"]
+    nuc_dir = outdir / "unique_toxin_nucs"
+    nuc_dir.mkdir()
+    for locus, unique_nucs in unique_toxin_nucs.items():
+        nucs_out = (SeqRecord(Seq(k, IUPAC.IUPACAmbiguousDNA), id=v, description="") for k, v in unique_nucs.items())
+        SeqIO.write(nucs_out, str(nuc_dir / f"{locus}_unique_nucs.fas"), "fasta")
+
+    # Amino acids
     import ipdb; ipdb.set_trace()
-
-    #     nucs_out = (SeqRecord(Seq(k, IUPAC.IUPACAmbiguousDNA), id=v, description="") for k, v in unique_nucs.items())
-    #     SeqIO.write(nucs_out, "nucs.fas", "fasta")
-
+    for f in pathlib.Path(nuc_dir).glob("*.fas"):
+        dedup_aminos = defaultdict(list)
+        for record in SeqIO.parse(str(f), "fasta"):
+            record.seq = record.seq.translate()
+            dedup_aminos[str(record.seq)].append(record.id)    
     #     dedup_aminos = defaultdict(list)
     #     for record in SeqIO.parse("nucs.fas", "fasta"):
     #         record.seq = record.seq.translate()
@@ -236,6 +250,20 @@ def main(allele_export, ref_seqs, allele_seqdir, toxin_seqdir, output_directory,
 
     #     aminos_out = (SeqRecord(Seq(k, IUPAC.ExtendedIUPACProtein), id="|".join(v), description='') for k, v in dedup_aminos.items())
     #     SeqIO.write(aminos_out, "aminos.fas", "fasta")
+    
+
+    def read_toxins(toxin_seqs):
+    toxins = {}
+    for f in pathlib.Path(toxin_seqs).glob("*.fas"):
+        dedup_nucs = defaultdict(list)
+        for record in SeqIO.parse(str(f), "fasta"):
+            dedup_nucs[str(record.seq)].append(record.id)
+        toxins[f.stem] = dedup_nucs
+
+    return toxins
+
+
+
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
