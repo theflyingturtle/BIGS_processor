@@ -132,7 +132,7 @@ def main(allele_export, ref_seqs, allele_seqdir, toxin_seqdir, output_directory,
     gene_prev['cluster'] = gene_prev['locus'].replace('mj_', '', regex=True).str[:3]
     gene_prev = gene_prev.reindex(sorted(gene_prev.columns), axis=1)
     gene_prev.to_csv(outdir / "gene_prevalence_summary.csv")
-    import ipdb; ipdb.set_trace()
+    
     # Summary of bacteriocin profiles (as for MLST)
     bact_STs = {}
     isolate_STs = {}
@@ -200,12 +200,8 @@ def main(allele_export, ref_seqs, allele_seqdir, toxin_seqdir, output_directory,
     import ipdb; ipdb.set_trace()
     pass
 
-    # # Toxin gene processing
-    # for toxin, alleles in read_toxins(toxin_seqdir).items():
-    #     dedup_nucs = defaultdict(list)
-    #     for record in SeqIO.parse("mj_cibA.fas", "fasta"):
-    #         dedup_nucs[str(record.seq)].append(record.id)
-
+    # Toxin gene processing
+    for toxin, alleles in read_toxins(toxin_seqdir).items():
     #     nuc_counts = {}
     #     for seq, ids in dedup_records.items():
     #         tmp_count = len(ids)
