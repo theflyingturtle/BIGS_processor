@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+import matplotlib
+matplotlib.use("Agg")
+
 import pandas as pd
 import xlrd
 import click
@@ -154,8 +157,9 @@ def main(allele_export, ref_seqs, allele_seqdir, toxin_seqdir, output_directory,
 
     # Process nucleotide sequences
     ref_lens = read_ref_seqs(ref_seqs)
+    isolate_alleles = read_isolate_alleles(allele_seqdir)
     statuses = {}
-    for locus, alleles in read_isolate_alleles(allele_seqdir).items():
+    for locus, alleles in isolate_alleles.items():
         status = {}
         allele_ids = df.set_index("id")[locus].to_dict()
         for isolate_id, seq in alleles.items():
@@ -201,21 +205,26 @@ def main(allele_export, ref_seqs, allele_seqdir, toxin_seqdir, output_directory,
     pass
 
     # Toxin gene processing
+    toxins = read_toxins(toxin_seqdir)
+    
     tot_nuc_counts = {}
-    for toxin, alleles in read_toxins(toxin_seqdir).items():
+    for toxin, alleles in toxins.items():
         ind_nuc_counts = {}
         for seq, ids in alleles.items():
             tmp_count = len(ids)
             ind_nuc_counts[seq] = tmp_count
         tot_nuc_counts[toxin] = ind_nuc_counts
-    import ipdb; ipdb.set_trace()
 
     unique_toxin_nucs = {}
-    unique_nucs = {
-        seq: f"{v[0]}_{ind_nuc_counts[seq]}"
-        for seq, v
-        in alleles.items()
-    }
+    for locus, alleles in toxins.items():
+        unique_nucs = {}
+        for seq, ids in alleles.items():
+            representative_id = ids[0]
+            count = tot_nuc_counts[locus][seq]
+            unique_nucs[seq] = f"{representative_id}_{count}"
+        unique_toxin_nucs[locus] = unique_nucs
+        
+    import ipdb; ipdb.set_trace()
 
     #     nucs_out = (SeqRecord(Seq(k, IUPAC.IUPACAmbiguousDNA), id=v, description="") for k, v in unique_nucs.items())
     #     SeqIO.write(nucs_out, "nucs.fas", "fasta")
