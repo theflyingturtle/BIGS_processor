@@ -239,12 +239,17 @@ def main(allele_export, ref_seqs, allele_seqdir, toxin_seqdir, output_directory,
 
     # Amino acids
     unique_toxin_aminos = {}
+    full_lgt_unique_toxin_aminos = {}
     for f in pathlib.Path(nuc_dir).glob("*.fas"):
         unique_aminos = defaultdict(list)
+        full_lgt_aminos = defaultdict(list)
         for record in SeqIO.parse(str(f), "fasta"):
             record.seq = record.seq.translate()
             unique_aminos[str(record.seq)].append(record.id)
+            if "*" not in record.seq[:-1]:
+                full_lgt_aminos[str(record.seq)].append(record.id) 
         unique_toxin_aminos[f.stem] = unique_aminos
+        full_lgt_unique_toxin_aminos[f.stem] = full_lgt_aminos
 
     amino_dir = outdir / "unique_toxin_aminos"
     amino_dir.mkdir()
