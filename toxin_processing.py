@@ -201,7 +201,8 @@ def main(allele_export, ref_seqs, allele_seqdir, toxin_seqdir, output_directory,
             status[isolate_id] = "complete"
         statuses[locus] = pd.Series(status, dtype="category")
     statuses = pd.DataFrame(statuses, dtype="category").sort_index()
-
+    statuses = statuses.reindex(df.set_index("id").index.astype(int))
+    
     summary = statuses.apply(pd.Series.value_counts).fillna(0).astype(int)
     summary.to_csv(outdir / "locus_status_summary.csv")
 
